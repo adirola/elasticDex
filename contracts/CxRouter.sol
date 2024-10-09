@@ -73,8 +73,9 @@ contract CxRouter is Ownable, Pausable, ReentrancyGuard, WmbApp {
         _;
     }
 
-    constructor(address _wmbGateway) WmbApp() {
+    constructor(address _wmbGateway) Ownable() Pausable() ReentrancyGuard() WmbApp() {
         initialize(_msgSender(), _wmbGateway);
+        _transferOwnership(_msgSender());
     }
 
     function _wmbReceive(

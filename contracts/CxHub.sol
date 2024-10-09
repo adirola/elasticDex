@@ -8,6 +8,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 library StringHelper {
     function concat(
@@ -86,6 +87,7 @@ contract CxHub is
     struct CxChain {
         address rmtCxRouter;
         address rmtToken;
+        uint8 decimals;
     }
 
     // Supported Remote Address.
@@ -144,6 +146,18 @@ contract CxHub is
     ) external onlyOwner {
         require(token != address(0), "CxZeroAddressNotAllowed");
         supportToken[token] = isActive;
+    }
+
+    function configureRmtToken(
+        uint256 _rmtChainId,
+        address _rmtToken,
+        uint8 _decimal
+    ) external onlyOwner {
+        require(_rmtToken != address(0), "CxZeroAddressNotAllowed");
+        CxChain memory chain = rmtChain[_rmtChainId];
+        chain.rmtToken = _rmtToken;
+        chain.decimals = _decimal;
+        rmtChain[_rmtChainId] = chain;
     }
 
     function configureRmtRouter(
@@ -223,7 +237,11 @@ contract CxHub is
         uint256[] memory _bridgePercent
     ) external payable nonReentrant {
         uint256 _msgValue = msg.value;
-        require(_bridgeInfos.length <= 3 && _bridgeInfos.length == _bridgePercent.length, "CxInvalidBridgeInputs");
+        require(
+            _bridgeInfos.length <= 3 &&
+                _bridgeInfos.length == _bridgePercent.length,
+            "CxInvalidBridgeInputs"
+        );
         require(
             supportToken[_srcSwapDetails.buyToken],
             "CxUnsupportedBridgeAsset"
@@ -242,11 +260,20 @@ contract CxHub is
         // Liquidity Sent to the Router contract.
         _transfer(_srcSwapDetails.buyToken, boughtAmt, address(cxRouter));
         // Construct Remote Router execution method.
-        ICxRouter.CxRouterInfo[] memory routes = new ICxRouter.CxRouterInfo[](_bridgeInfos.length);
+        ICxRouter.CxRouterInfo[] memory routes = new ICxRouter.CxRouterInfo[](
+            _bridgeInfos.length
+        );
         for (uint256 i = 0; i < _bridgeInfos.length; i++) {
             CxBridgeInfo memory _bridgeInfo = _bridgeInfos[i];
             require(_bridgePercent[i] != 0, "CxInvalidBridgePercent");
-            bytes memory payload = _constructExeMethod(boughtAmt * _bridgePercent[i] / 10_000, _bridgeInfo);
+            bytes memory payload = _constructExeMethod(
+                _normaliseAmt(
+                    _bridgeInfo.rmtChainId,
+                    _bridgeInfo.asset,
+                    (boughtAmt * _bridgePercent[i]) / 10_000
+                ),
+                _bridgeInfo
+            );
             {
                 ICxRouter.CxRouterInfo memory route = ICxRouter.CxRouterInfo({
                     asset: _bridgeInfo.asset,
@@ -265,16 +292,12 @@ contract CxHub is
         address _asset,
         uint256 _amount,
         ICxSwap.CxSwapInfo memory _swapDetails
-    ) external payable returns(bool) {
+    ) external payable returns (bool) {
         require(
-            _asset == _swapDetails.sellToken &&
-            supportToken[_asset],
+            _asset == _swapDetails.sellToken && supportToken[_asset],
             "CxInvalidSupportToken"
         );
-        require(
-            _amount >= _swapDetails.sellAmt,
-            "CxInvalidBridgeAmt"
-        );
+        require(_amount >= _swapDetails.sellAmt, "CxInvalidBridgeAmt");
         _swapDetails.sellAmt = _amount;
         IERC20(_swapDetails.sellToken).safeTransferFrom(
             _msgSender(),
@@ -282,18 +305,37 @@ contract CxHub is
             _swapDetails.sellAmt
         );
         // Take Fee.
-        uint256 afterFee = _takeFee(_swapDetails.sellToken,  _swapDetails.sellAmt);
-        // Transfer to swap.
-        IERC20(_swapDetails.sellToken).safeTransferFrom(
-            _msgSender(),
-            address(cxSwap),
-            afterFee
+        uint256 afterFee = _takeFee(
+            _swapDetails.sellToken,
+            _swapDetails.sellAmt
         );
-        _swapDetails.sellAmt = afterFee;
-        uint256 boughtAmt = cxSwap.swap(_swapDetails);
-        // Transfer to receiver
-        _transfer(_swapDetails.buyToken, boughtAmt, _receiver);
+        if (_swapDetails.sellToken == _swapDetails.buyToken) {
+            // No Swap Required.
+            _transfer(_swapDetails.buyToken, afterFee, _receiver);
+        } else {
+            // Transfer to swap.
+            IERC20(_swapDetails.sellToken).safeTransferFrom(
+                _msgSender(),
+                address(cxSwap),
+                afterFee
+            );
+            _swapDetails.sellAmt = afterFee;
+            uint256 boughtAmt = cxSwap.swap(_swapDetails);
+            // Transfer to receiver
+            _transfer(_swapDetails.buyToken, boughtAmt, _receiver);
+        }
         return true;
+    }
+
+    function _normaliseAmt(
+        uint256 _chainId,
+        address _token,
+        uint256 _amount
+    ) private view returns (uint256 amt) {
+        uint256 decimal = rmtChain[_chainId].decimals;
+        amt =
+            (_amount * 10 ** decimal) /
+            10 ** IERC20Metadata(_token).decimals();
     }
 
     function _constructExeMethod(
