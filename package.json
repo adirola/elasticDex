@@ -1,0 +1,29 @@
+{
+  "name": "wanchain-hack",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.4.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@types/dotenv": "^6.1.1",
+    "@types/node": "^22.7.5",
+    "hardhat": "^2.22.13"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.2",
+    "@openzeppelin/contracts-upgradeable": "^4.8.2",
+    "@wandevs/message": "^0.2.1",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.3",
+    "hardhat-contract-sizer": "^2.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  }
+}
