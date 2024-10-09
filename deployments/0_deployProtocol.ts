@@ -79,7 +79,6 @@ async function deploy() {
         await sleep(5000);
     }
 
-
     // Deploy Hub
     let CX_HUB;
     console.log("\n\n---------------Step 3 : Deploying CxHub--------------");
@@ -105,3 +104,5 @@ async function deploy() {
         await sleep(5000);
     }
 }
+
+deploy();

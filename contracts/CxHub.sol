@@ -213,14 +213,14 @@ contract CxHub is
             );
             _msgValue = msg.value;
         } else {
-            _msgValue = msg.value - _bridgeInfo.gasFee;
+            _msgValue = _srcSwapDetails.sellAmt;
         }
         uint256 boughtAmt = cxSwap.swap{value: _msgValue}(_srcSwapDetails);
         // Liquidity Sent to the Router contract.
         _transfer(_bridgeInfo.asset, boughtAmt, address(cxRouter));
         // Construct Remote Router execution method.
         bytes memory payload = _constructExeMethod(boughtAmt, _bridgeInfo);
-        cxRouter.send{value: _msgValue}(
+        cxRouter.send{value: address(this).balance}(
             ICxRouter.CxRouterInfo({
                 asset: _bridgeInfo.asset,
                 rmtChainId: _bridgeInfo.rmtChainId,
@@ -254,7 +254,7 @@ contract CxHub is
             );
             _msgValue = msg.value;
         } else {
-            _msgValue = msg.value - _srcSwapDetails.sellAmt;
+            _msgValue = _srcSwapDetails.sellAmt;
         }
         uint256 boughtAmt = cxSwap.swap{value: _msgValue}(_srcSwapDetails);
         // Liquidity Sent to the Router contract.
@@ -285,6 +285,7 @@ contract CxHub is
                 routes[i] = route;
             }
         }
+        cxRouter.sendMany{value: address(this).balance}(routes);
     }
 
     function handleBridge(

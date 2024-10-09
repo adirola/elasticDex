@@ -26,14 +26,16 @@ async function configure() {
             }
         );
         const binanceContracts: any = loadDeployedContracts(`56`);
-        REMOTE_CHAIN.push(
-            {
-                chainId: "2147484362",
-                rmtCxRouter: binanceContracts.CX_ROUTER,
-                rmtToken: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-                decimal: "18"
-            }
-        );
+        if (!binanceContracts){
+            REMOTE_CHAIN.push(
+                {
+                    chainId: "2147484362",
+                    rmtCxRouter: binanceContracts.CX_ROUTER,
+                    rmtToken: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+                    decimal: "18"
+                }
+            );
+        }
     } else if (network == 137) {
         // Polygon
         const avaxContracts: any = loadDeployedContracts(`43114`);
@@ -46,14 +48,16 @@ async function configure() {
             }
         );
         const binanceContracts: any = loadDeployedContracts(`56`);
-        REMOTE_CHAIN.push(
-            {
-                chainId: "2147484362",
-                rmtCxRouter: binanceContracts.CX_ROUTER,
-                rmtToken: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
-                decimal: "18"
-            }
-        );
+        if (!binanceContracts){
+            REMOTE_CHAIN.push(
+                {
+                    chainId: "2147484362",
+                    rmtCxRouter: binanceContracts.CX_ROUTER,
+                    rmtToken: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+                    decimal: "18"
+                }
+            );
+        }
     } else if (network == 56) {
         // Binance
         const polygonContracts: any = loadDeployedContracts(`137`);
